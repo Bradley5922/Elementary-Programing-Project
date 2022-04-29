@@ -1,5 +1,8 @@
-import matplotlib as plot
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
 import PySimpleGUI as gui 
+import numpy as np
+import matplotlib
 import csv
 
 # init data array
@@ -54,6 +57,16 @@ def mainPage():
 
     return gui.Window("Penguin Attribute Analysis", mainPageContent, finalize=True)
 
+def chartSelectionPage():
+    chartSelectionContent = [[gui.Column(
+                            [[gui.Text("Which Chart Type?", font=("Helvetica", 40))],
+                            [gui.Button("Bar Chart Of Penguin", font=("Helvetica", 25)), gui.Button("Scatter Plot Of Attribute", font=("Helvetica", 25))],
+                            [gui.Button("Back", font=("Helvetica", 25), button_color="red")]], 
+                        element_justification="c")]]
+
+
+    return gui.Window("PAA - Which Chart", chartSelectionContent, finalize=True)
+
 def byIdPage():
     viaIdContent = [[gui.Text("View All Data", font=("Helvetica", 40))],
                     [gui.Column([
@@ -70,34 +83,162 @@ def byIdPage():
 
     return gui.Window("PAA - By ID", viaIdContent, finalize=True)
 
+def barChartPage():
+    barChartContent = [[gui.Text("Bar Chart - Penguin", font=("Helvetica", 40))],
+                    [gui.Column([
+                        [gui.Text("Search By ID:", font=("Helvetica", 15))],
+                        [gui.In(key="IdSearch", font=("Helvetica", 20), size=(21)), gui.Button("Search", font=("Helvetica", 20), button_color="green")],
+                        [gui.Listbox(data, key="ScrollableList", size=(36, 15), font=("Helvetica", 15), select_mode="LISTBOX_SELECT_MODE_SINGLE", enable_events=True)],
+                        [gui.ColorChooserButton("Bar Colour Chooser", font=("Helvetica", 20), target="colourText"), gui.In(key="colourText", visible=False, enable_events=True)]], 
+                    element_justification="left"), 
+                    gui.Column([
+                        [gui.Text("Output:", font=("Helvetica", 15))],
+                        [gui.Canvas(key='chatView')]],
+                    element_justification="left", vertical_alignment="top")], 
+                    [gui.VPush()],
+                    [gui.Button("Back", font=("Helvetica", 25), button_color="red", size=10)]]
 
-mainPageWindow, viaIdWindow = mainPage(), None
+    return gui.Window("PAA - Bar Chart", barChartContent, finalize=True)
+
+def dictToFormatedString(dict):
+    finalString = ""
+    
+    for item in dict:
+        if item == "id":
+            continue
+        
+        semi_string = item.replace("_", " ").title() + ": " + str(dict[item]) + "\n"
+        finalString += semi_string
+
+    return finalString
+
+def genrateBarChart(dictData, colour):
+    print(dictData)
+
+    fig = plt.figure(figsize=(7,4))
+    
+    plt.title(dictData["species"] + " - " + str(dictData["id"]))
+    plt.xlabel("Attribute")
+    plt.ylabel("Value")
+
+
+    attributes = list(dictData.keys())
+    values = list(dictData.values())
+
+    attributes.pop(0)
+    attributes.pop(0)
+
+    values.pop(0)
+    values.pop(0)
+
+    for i in range(0, len(values)):
+        values[i] =  int(values[i])
+
+    plt.bar(attributes, values, color=colour, edgecolor='black')
+ 
+    return fig
+
+def draw_figure(canvas, figure):
+    figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
+    figure_canvas_agg.draw()
+    figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
+    
+    return figure_canvas_agg
+
+
+
+mainPageWindow, viaIdWindow, chartSelectionWindow, barChartWindow = mainPage(), None, None, None
+currentWindow = 0
+currentColour = "#ff0000"
 
 while True:
+    allOtherWindows = [viaIdWindow, chartSelectionWindow, barChartWindow]
     window, event, values = gui.read_all_windows()
-    # print(window, event, values)
+    # print(event)
+    # print(values)
 
     # Relevent for all windows
     if (event == gui.WIN_CLOSED) or (event == "Exit"): # if exit button or window x button used
         break
     if (event == "Back"):
-        viaIdWindow.close()
-        # mainPageWindow.close()
+        for window in allOtherWindows:
+            try:
+                window.close()
+            except:
+                print("tried to close:")
+                print(window)
+            
         mainPageWindow = mainPage()
+        currentWindow = 0
     
     # Main Page Window
     if (event == "Display Via ID"):
         mainPageWindow.close()
         viaIdWindow = byIdPage()
+        currentWindow = 1
 
-    # By ID window
+    # Chart selection window
+    if (event == "Show Charts"):
+        mainPageWindow.close()
+        chartSelectionWindow = chartSelectionPage()
+        currentWindow = 2
+    
+    if (event == "Bar Chart Of Penguin"):
+        chartSelectionWindow.close()
+        barChartWindow = barChartPage()
+        currentWindow = 3
+
+        fig_canvas_agg = draw_figure(barChartWindow['chatView'].TKCanvas, genrateBarChart(data[0], currentColour))
+
+
+    # By ID window / Bar Chart
     if (event == "Search"):
-        valueWanted = int(values['IdSearch'])
+        # Get value from input box
+        # Validation, to make sure erroneous data isn't entered
+        try:
+            valueWanted = int(values['IdSearch'])
+            print(currentWindow)
 
-        viaIdWindow['Output'].Update('')
-        viaIdWindow['ScrollableList'].Update(set_to_index=[valueWanted-1], scroll_to_index=valueWanted-1)
-        print("Value Entered: " + str(valueWanted))
-        print(data[valueWanted])
+            # Clear output box and display data, select said data in scrollable list
 
+            if currentWindow == 1:
+                window['Output'].Update('')
+                window['ScrollableList'].Update(set_to_index=[valueWanted-1], scroll_to_index=valueWanted-1)
+            
+
+                # whatever is printed is displayed in output window 
+                print("Value Searched For: " + str(valueWanted) + "\n")
+                print(dictToFormatedString(data[valueWanted-1]))
+            elif currentWindow == 3:
+                fig_canvas_agg.get_tk_widget().forget()
+                fig_canvas_agg = draw_figure(barChartWindow['chatView'].TKCanvas, genrateBarChart(dict(data[valueWanted-1]), currentColour))
+
+        except:
+            if currentWindow == 1:
+                window['Output'].Update('')
+                print("Error! Please try a diffrent input.")
+            else:
+                gui.popup("Error! Please try a diffrent input.")
+
+    # Item change in scrollable list
+    if (event == "ScrollableList"):
+        itemDict = dict(values["ScrollableList"][0])
+        itemId = int(itemDict["id"])
+
+        if currentWindow == 1:
+            window['Output'].Update('')
+            print("Value Selected: " + str(itemId) + "\n")
+            print(dictToFormatedString(data[itemId-1]))
+        elif currentWindow == 3:
+            fig_canvas_agg.get_tk_widget().forget()
+            fig_canvas_agg = draw_figure(barChartWindow['chatView'].TKCanvas, genrateBarChart(dict(data[itemId-1]), currentColour))
+
+    if (event == "colourText"):
+        print(currentColour)
+        currentColour = values["colourText"]
+        print(currentColour)
+
+        fig_canvas_agg.get_tk_widget().forget()
+        gui.popup("Please generate a new graph...", font=("Helvetica", 25))
 
 window.close()
