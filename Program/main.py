@@ -100,6 +100,18 @@ def barChartPage():
 
     return gui.Window("PAA - Bar Chart", barChartContent, finalize=True)
 
+def scatterGraphPage():
+    scatterGraphContent = [[gui.Text("Scatter Graph - Attribute", font=("Helvetica", 40))],
+                            [gui.Canvas(key='scatterView')],
+                            [gui.Text("Select 2 Attributes:", font=("Helvetica", 20))],
+                            [gui.Listbox(list(data[0].keys()), key="attributeList", size=(36, 6), font=("Helvetica", 15), enable_events=True, select_mode="LISTBOX_SELECT_MODE_MULTIPLE", default_values=["bill_length_mm", "bill_depth_mm"])],
+                            [[gui.ColorChooserButton("Dot Colour Chooser", font=("Helvetica", 20), target="colourText"), gui.In(key="colourText", visible=False, enable_events=True)],
+                            [gui.VPush()],
+                            [gui.Button("Back", font=("Helvetica", 25), button_color="red", size=10)]]]
+
+    return gui.Window("PAA - Scatter Graph", scatterGraphContent, finalize=True)
+
+
 def dictToFormatedString(dict):
     finalString = ""
     
@@ -138,6 +150,27 @@ def genrateBarChart(dictData, colour):
  
     return fig
 
+def genrateScatterChart(data, colour, a1, a2):
+
+    fig = plt.figure(figsize=(7,4))
+
+    plt.title("Comparison of: " + a1 + " & " + a2)
+    plt.xlabel(a1)
+    plt.ylabel(a2)
+
+    a1Data = []
+    a2Data = []
+    
+    for record in data:
+        a1Data.append(record[a1])
+        a2Data.append(record[a2])
+
+    # americans can't spell grrr
+    plt.scatter(a1Data, a2Data, color=colour) 
+
+    return fig
+
+# this function is from a demo piece of code for PySimpleGUI
 def draw_figure(canvas, figure):
     figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
     figure_canvas_agg.draw()
@@ -147,12 +180,12 @@ def draw_figure(canvas, figure):
 
 
 
-mainPageWindow, viaIdWindow, chartSelectionWindow, barChartWindow = mainPage(), None, None, None
+mainPageWindow, viaIdWindow, chartSelectionWindow, barChartWindow, scatterGraphWindow = mainPage(), None, None, None, None
 currentWindow = 0
 currentColour = "#ff0000"
 
 while True:
-    allOtherWindows = [viaIdWindow, chartSelectionWindow, barChartWindow]
+    allOtherWindows = [viaIdWindow, chartSelectionWindow, barChartWindow, scatterGraphWindow]
     window, event, values = gui.read_all_windows()
     # print(event)
     # print(values)
@@ -165,8 +198,7 @@ while True:
             try:
                 window.close()
             except:
-                print("tried to close:")
-                print(window)
+                print("trying to close all other windows")
             
         mainPageWindow = mainPage()
         currentWindow = 0
@@ -190,6 +222,12 @@ while True:
 
         fig_canvas_agg = draw_figure(barChartWindow['chatView'].TKCanvas, genrateBarChart(data[0], currentColour))
 
+    if (event == "Scatter Plot Of Attribute"):
+        chartSelectionWindow.close()
+        scatterGraphWindow = scatterGraphPage()
+        currentWindow = 4
+
+        fig_canvas_agg = draw_figure(scatterGraphWindow['scatterView'].TKCanvas, genrateScatterChart(data, currentColour, "flipper_length_mm", "bill_depth_mm"))
 
     # By ID window / Bar Chart
     if (event == "Search"):
@@ -240,5 +278,9 @@ while True:
 
         fig_canvas_agg.get_tk_widget().forget()
         gui.popup("Please generate a new graph...", font=("Helvetica", 25))
+
+    # Scatter graph page
+    if (event == "attributeList"):
+        print(values)
 
 window.close()
