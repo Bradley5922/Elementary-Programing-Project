@@ -60,7 +60,7 @@ def mainPage():
 def chartSelectionPage():
     chartSelectionContent = [[gui.Column(
                             [[gui.Text("Which Chart Type?", font=("Helvetica", 40))],
-                            [gui.Button("Bar Chart Of Penguin", font=("Helvetica", 25)), gui.Button("Scatter Plot Of Attribute", font=("Helvetica", 25))],
+                            [gui.Button("Bar Chart Of Penguin", font=("Helvetica", 25)), gui.Button("Scatter Plot Of Attribute", font=("Helvetica", 25)), gui.Button("Scatter Plot Mean", font=("Helvetica", 25))],
                             [gui.Button("Back", font=("Helvetica", 25), button_color="red")]], 
                         element_justification="c")]]
 
@@ -104,12 +104,29 @@ def scatterGraphPage():
     scatterGraphContent = [[gui.Text("Scatter Graph - Attribute", font=("Helvetica", 40))],
                             [gui.Canvas(key='scatterView')],
                             [gui.Text("Select 2 Attributes:", font=("Helvetica", 20))],
-                            [gui.Listbox(list(data[0].keys()), key="attributeList", size=(36, 6), font=("Helvetica", 15), enable_events=True, select_mode="LISTBOX_SELECT_MODE_MULTIPLE", default_values=["bill_length_mm", "bill_depth_mm"])],
+                            [gui.Combo(list(data[0].keys()), default_value='bill_length_mm', font=("Helvetica", 20), enable_events=True, key='a1')],
+                            [gui.Combo(list(data[0].keys()), default_value='bill_depth_mm', font=("Helvetica", 20), enable_events=True, key='a2')],
                             [[gui.ColorChooserButton("Dot Colour Chooser", font=("Helvetica", 20), target="colourText"), gui.In(key="colourText", visible=False, enable_events=True)],
                             [gui.VPush()],
                             [gui.Button("Back", font=("Helvetica", 25), button_color="red", size=10)]]]
 
     return gui.Window("PAA - Scatter Graph", scatterGraphContent, finalize=True)
+
+def scatterGraphMeanPage():
+    keys = list(data[0].keys())
+    keys.pop(0)
+    keys.pop(0)
+
+    scatterGraphMeanContent = [[gui.Text("Scatter Graph - Mean", font=("Helvetica", 40))],
+                            [gui.Canvas(key='scatterView')],
+                            [gui.Text("Select Attribute To Compare:", font=("Helvetica", 20))],
+                            [gui.Combo(keys, default_value='bill_length_mm', font=("Helvetica", 20), enable_events=True, key='attributeNotMean')],
+                            [[gui.ColorChooserButton("Dot Colour Chooser", font=("Helvetica", 20), target="colourText"), gui.In(key="colourText", visible=False, enable_events=True)],
+                            [gui.VPush()],
+                            [gui.Button("Back", font=("Helvetica", 25), button_color="red", size=10)]]]
+
+    return gui.Window("PAA - Scatter Graph", scatterGraphMeanContent, finalize=True)
+
 
 
 def dictToFormatedString(dict):
@@ -170,6 +187,24 @@ def genrateScatterChart(data, colour, a1, a2):
 
     return fig
 
+def genrateScatterMeanChart(data, meanData, colour, selectedA):
+
+    fig = plt.figure(figsize=(7,4))
+
+    plt.title("Comparison of: " + selectedA + " & Mean")
+    plt.xlabel(selectedA)
+    plt.ylabel("Mean")
+
+    selectedData = []
+    
+    for record in data:
+        selectedData.append(record[selectedA])
+
+    # americans can't spell grrr
+    plt.scatter(selectedData, meanData, color=colour) 
+
+    return fig
+
 # this function is from a demo piece of code for PySimpleGUI
 def draw_figure(canvas, figure):
     figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
@@ -180,7 +215,7 @@ def draw_figure(canvas, figure):
 
 
 
-mainPageWindow, viaIdWindow, chartSelectionWindow, barChartWindow, scatterGraphWindow = mainPage(), None, None, None, None
+mainPageWindow, viaIdWindow, chartSelectionWindow, barChartWindow, scatterGraphWindow, scatterGraphMeanWindow = mainPage(), None, None, None, None, None
 currentWindow = 0
 currentColour = "#ff0000"
 
@@ -229,6 +264,11 @@ while True:
 
         fig_canvas_agg = draw_figure(scatterGraphWindow['scatterView'].TKCanvas, genrateScatterChart(data, currentColour, "flipper_length_mm", "bill_depth_mm"))
 
+    if (event == "Scatter Plot Mean"):
+        chartSelectionWindow.close()
+        scatterGraphMeanWindow = scatterGraphMeanPage()
+        currentWindow = 5
+
     # By ID window / Bar Chart
     if (event == "Search"):
         # Get value from input box
@@ -250,6 +290,7 @@ while True:
             elif currentWindow == 3:
                 fig_canvas_agg.get_tk_widget().forget()
                 fig_canvas_agg = draw_figure(barChartWindow['chatView'].TKCanvas, genrateBarChart(dict(data[valueWanted-1]), currentColour))
+                window['ScrollableList'].Update(set_to_index=[valueWanted-1], scroll_to_index=valueWanted-1)
 
         except:
             if currentWindow == 1:
@@ -280,7 +321,36 @@ while True:
         gui.popup("Please generate a new graph...", font=("Helvetica", 25))
 
     # Scatter graph page
-    if (event == "attributeList"):
-        print(values)
+    if (event == "a1") or (event == "a2"):
+        a1 = values["a1"]
+        a2 = values["a2"]
+
+        fig_canvas_agg.get_tk_widget().forget()
+        fig_canvas_agg = draw_figure(scatterGraphWindow['scatterView'].TKCanvas, genrateScatterChart(data, currentColour, a1, a2))
+
+    # Scatter Graph Mean Page 
+    if (event == "attributeNotMean"):
+        attributeChosen = values["attributeNotMean"]
+        otherAttributes = list(data[0].keys())
+        
+        otherAttributes.pop(0)
+        otherAttributes.pop(0)
+        otherAttributes.remove(attributeChosen)
+
+        meanOfDatum = []
+        for datum in data:
+            total = 0
+            for a in otherAttributes:
+                total += datum[a]
+
+            total = total / 3
+            meanOfDatum.append(int(total))
+
+        print(meanOfDatum)
+
+        print(attributeChosen, otherAttributes)
+
+        # fig_canvas_agg.get_tk_widget().forget()
+        fig_canvas_agg = draw_figure(scatterGraphWindow['scatterView'].TKCanvas, genrateScatterMeanChart(data, meanOfDatum, currentColour, attributeChosen))
 
 window.close()
