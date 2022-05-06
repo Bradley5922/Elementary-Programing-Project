@@ -163,6 +163,7 @@ def genrateBarChart(dictData, colour):
     for i in range(0, len(values)):
         values[i] =  int(values[i])
 
+    plt.ylim([0, 240])
     plt.bar(attributes, values, color=colour, edgecolor='black')
  
     return fig
@@ -187,21 +188,23 @@ def genrateScatterChart(data, colour, a1, a2):
 
     return fig
 
-def genrateScatterMeanChart(data, meanData, colour, selectedA):
+def genrateScatterMeanChart(data, colour, aName):
 
     fig = plt.figure(figsize=(7,4))
 
-    plt.title("Comparison of: " + selectedA + " & Mean")
-    plt.xlabel(selectedA)
+    plt.title("Comparison of: " + aName + " & Mean")
+    plt.xlabel(aName)
     plt.ylabel("Mean")
 
-    selectedData = []
-    
-    for record in data:
-        selectedData.append(record[selectedA])
+    ax = plt.axes()
+    # next line is from stackoverflow cuz its so clean
+    ax.plot([0,1],[0,1], transform=ax.transAxes)
+    # limits graph to axes to reproduce brief's graph
+    plt.ylim([0, 150])
+    plt.xlim([0, 250])
 
     # americans can't spell grrr
-    plt.scatter(selectedData, meanData, color=colour) 
+    plt.scatter(data[0], data[1], color=colour) 
 
     return fig
 
@@ -220,7 +223,7 @@ currentWindow = 0
 currentColour = "#ff0000"
 
 while True:
-    allOtherWindows = [viaIdWindow, chartSelectionWindow, barChartWindow, scatterGraphWindow]
+    allOtherWindows = [viaIdWindow, chartSelectionWindow, barChartWindow, scatterGraphWindow, scatterGraphMeanWindow]
     window, event, values = gui.read_all_windows()
     # print(event)
     # print(values)
@@ -268,6 +271,8 @@ while True:
         chartSelectionWindow.close()
         scatterGraphMeanWindow = scatterGraphMeanPage()
         currentWindow = 5
+
+        fig_canvas_agg = draw_figure(scatterGraphMeanWindow['scatterView'].TKCanvas, genrateScatterMeanChart([[1],[1]], currentColour, "None (Generate New Graph)"))
 
     # By ID window / Bar Chart
     if (event == "Search"):
@@ -338,19 +343,23 @@ while True:
         otherAttributes.remove(attributeChosen)
 
         meanOfDatum = []
-        for datum in data:
-            total = 0
+        chosenData = []
+
+
+        for record in data:
+            chosenData.append(record[attributeChosen])
+
+            currentP = 0
             for a in otherAttributes:
-                total += datum[a]
+                currentP = currentP + int(record[a])
+            currentP = currentP / 3
+    
+            meanOfDatum.append(currentP)
+        # print(otherData, len(otherData))
+        # print(meanOfDatum, len(meanOfDatum))
 
-            total = total / 3
-            meanOfDatum.append(int(total))
-
-        print(meanOfDatum)
-
-        print(attributeChosen, otherAttributes)
-
-        # fig_canvas_agg.get_tk_widget().forget()
-        fig_canvas_agg = draw_figure(scatterGraphWindow['scatterView'].TKCanvas, genrateScatterMeanChart(data, meanOfDatum, currentColour, attributeChosen))
+        aggergateData = [chosenData, meanOfDatum]
+        fig_canvas_agg.get_tk_widget().forget()
+        fig_canvas_agg = draw_figure(scatterGraphMeanWindow['scatterView'].TKCanvas, genrateScatterMeanChart(aggergateData, currentColour, attributeChosen))
 
 window.close()

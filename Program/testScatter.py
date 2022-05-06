@@ -1,5 +1,6 @@
 import csv
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import numpy as np
 
 data = []
@@ -36,17 +37,29 @@ for data_RAW in arrayForm:
     data.append(structured_data)
 
 
-choice = input("Which attribute: ")
+choice = "flipper_length_mm"
+otherKeys = ["bill_length_mm", "bill_depth_mm", "body_mass_g/100"]
 
 chosenData = []
 otherData = []
+
 for record in data:
     chosenData.append(record[choice])
-    otherData.append(record["bill_length_mm"])
+
+    currentP = 0
+    for a in otherKeys:
+        currentP = currentP + int(record[a])
+    currentP = currentP / 3
+    
+    otherData.append(currentP)
+
+print(otherData)
 
 
 
 plt.scatter(chosenData, otherData)
+ax = plt.axes()
+ax.plot([0,1],[0,1], transform=ax.transAxes)
+plt.ylim([0, 150])
+plt.xlim([0, 250])
 plt.show()
-
-print(data)
