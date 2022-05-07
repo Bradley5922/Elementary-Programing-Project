@@ -349,6 +349,7 @@ while True:
         for record in data:
             chosenData.append(record[attributeChosen])
 
+            # Mean calculation
             currentP = 0
             for a in otherAttributes:
                 currentP = currentP + int(record[a])
